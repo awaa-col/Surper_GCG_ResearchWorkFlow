@@ -33,6 +33,7 @@ from probes.extract import (
     projection_values,
     split_half_stability,
 )
+from probes.model_config import get_num_hidden_layers
 from probes.review_labels import (
     label_response,
     pick_manual_review_candidates,
@@ -192,7 +193,7 @@ def main():
 
     model, tokenizer = load_model(args.model, args.hf_token)
     device = next(model.parameters()).device
-    all_layers = list(range(model.config.num_hidden_layers))
+    all_layers = list(range(get_num_hidden_layers(model.config)))
     seeds = parse_seeds(args.seeds)
 
     per_seed = []

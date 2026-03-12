@@ -34,6 +34,7 @@ from probes.extract import (
     remove_projection,
     split_half_stability,
 )
+from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.stats import set_seed
 
 
@@ -101,7 +102,9 @@ def load_model(model_name: str, hf_token: str | None = None):
         attn_implementation="eager",
     )
     model.eval()
-    print(f"  layers={model.config.num_hidden_layers}, hidden={model.config.hidden_size}")
+    layers = get_num_hidden_layers(model.config)
+    hidden = get_hidden_size(model.config)
+    print(f"  layers={layers}, hidden={hidden}")
     return model, tokenizer
 
 

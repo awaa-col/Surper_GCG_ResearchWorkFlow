@@ -17,6 +17,7 @@ from data.datasets import load_default_datasets
 from probes.ablate import _make_addition_hook, generate_normal, generate_with_ablation
 from probes.direction_cache import extract_and_cache
 from probes.extract import collect_hidden_states, mean_diff_direction
+from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.stats import batch_classify, set_seed
 
 
@@ -66,7 +67,9 @@ def load_model(model_name: str, hf_token: str | None = None):
         attn_implementation="eager",
     )
     model.eval()
-    print(f"  layers={model.config.num_hidden_layers}, hidden={model.config.hidden_size}")
+    layers = get_num_hidden_layers(model.config)
+    hidden = get_hidden_size(model.config)
+    print(f"  layers={layers}, hidden={hidden}")
     return model, tokenizer
 
 

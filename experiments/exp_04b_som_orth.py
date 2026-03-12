@@ -27,6 +27,7 @@ from minisom import MiniSom
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from probes.extract import collect_hidden_states, mean_diff_direction, _build_prompt
+from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.stats import set_seed, batch_classify
 from data.datasets import load_default_datasets
 
@@ -43,7 +44,9 @@ def load_model(model_name, hf_token=None):
         attn_implementation="eager",
     )
     model.eval()
-    print(f"  layers={model.config.num_hidden_layers}, hidden={model.config.hidden_size}")
+    layers = get_num_hidden_layers(model.config)
+    hidden = get_hidden_size(model.config)
+    print(f"  layers={layers}, hidden={hidden}")
     return model, tokenizer
 
 

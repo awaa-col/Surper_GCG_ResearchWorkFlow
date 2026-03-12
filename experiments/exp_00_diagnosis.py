@@ -12,6 +12,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from probes.ablate import attention_to_region, generate_normal, get_attention_weights
 from probes.extract import _build_prompt
+from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.judge import is_refusal
 from probes.runlog import JsonlRunLogger, default_log_path
 
@@ -65,7 +66,9 @@ def load_model(model_name: str, hf_token: str | None = None):
         attn_implementation="eager",
     )
     model.eval()
-    print(f"  layers={model.config.num_hidden_layers}, hidden={model.config.hidden_size}")
+    layers = get_num_hidden_layers(model.config)
+    hidden = get_hidden_size(model.config)
+    print(f"  layers={layers}, hidden={hidden}")
     return model, tokenizer
 
 
@@ -113,7 +116,7 @@ def run_matrix(model, tokenizer, system: str, system_name: str, logger: JsonlRun
 def run_attention_analysis(model, tokenizer, system: str):
     print("\n[exp_00] Attention analysis...")
 
-    num_layers = model.config.num_hidden_layers
+    num_layers = get_num_hidden_layers(model.config)
     analyze_layers = list(range(0, num_layers, max(1, num_layers // 6)))
 
     refused_prompt = HARMFUL_DIRECT[0]

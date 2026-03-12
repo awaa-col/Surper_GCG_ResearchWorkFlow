@@ -52,6 +52,7 @@ from probes.ablate import (
     _make_ablate_hook, _make_addition_hook,
 )
 from probes.direction_cache import extract_and_cache
+from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.shield_audit import AuditItem, ShieldGemmaAuditor
 from probes.stats import set_seed, batch_classify
 from data.datasets import load_default_datasets
@@ -147,8 +148,9 @@ def load_model(model_name, hf_token=None):
         attn_implementation="eager",
     )
     model.eval()
-    n_layers = model.config.num_hidden_layers
-    print(f"  layers={n_layers}, hidden={model.config.hidden_size}")
+    n_layers = get_num_hidden_layers(model.config)
+    hidden = get_hidden_size(model.config)
+    print(f"  layers={n_layers}, hidden={hidden}")
     return model, tokenizer, n_layers
 
 

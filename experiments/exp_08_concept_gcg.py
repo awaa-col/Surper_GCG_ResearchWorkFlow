@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT))
 
 from data.datasets import load_default_datasets, load_advbench_with_targets
 from probes.extract import collect_hidden_states, _build_prompt, _get_last_token_pos
+from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.stats import batch_classify
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -47,8 +48,9 @@ def load_model_and_tokenizer():
         MODEL_ID, torch_dtype=torch.float32, device_map=DEVICE,
     )
     model.eval()
-    print(f"  Loaded. Layers={model.config.num_hidden_layers}, "
-          f"Hidden={model.config.hidden_size}")
+    layers = get_num_hidden_layers(model.config)
+    hidden = get_hidden_size(model.config)
+    print(f"  Loaded. Layers={layers}, Hidden={hidden}")
     return model, tokenizer
 
 
@@ -95,8 +97,8 @@ def train_probes(
       exec_probes:    有害(label=1) vs 无害(label=0) → "执行拒绝"概念
       persona_probes: DAN系统提示(label=1) vs 安全系统提示(label=0) → "安全身份"概念
     """
-    num_layers = model.config.num_hidden_layers
-    hidden_dim = model.config.hidden_size
+    num_layers = get_num_hidden_layers(model.config)
+    hidden_dim = get_hidden_size(model.config)
     
     # ── 收集 exec 探针数据：有害 vs 无害 prompt 的 hidden states ──
     print("\n[Phase A] Collecting hidden states for exec probes...")
@@ -227,7 +229,7 @@ def concept_gcg(
     用贪婪坐标替换搜索对抗 Token。
     """
     vocab_size = model.config.vocab_size
-    num_layers = model.config.num_hidden_layers
+    num_layers = get_num_hidden_layers(model.config)
     embedding_layer = model.get_input_embeddings()
     
     # 构建 input_ids: [chat_template(system) | user_prompt | adv_tokens | gen_prompt]

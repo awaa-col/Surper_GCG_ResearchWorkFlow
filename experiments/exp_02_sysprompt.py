@@ -33,6 +33,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from tqdm import tqdm
 
 from probes.extract import collect_hidden_states, mean_diff_direction
+from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.ablate import (
     generate_normal,
     weight_orthogonalize,
@@ -66,7 +67,9 @@ def load_model(model_name, hf_token=None):
         attn_implementation="eager",
     )
     model.eval()
-    print(f"  layers={model.config.num_hidden_layers}, hidden={model.config.hidden_size}")
+    layers = get_num_hidden_layers(model.config)
+    hidden = get_hidden_size(model.config)
+    print(f"  layers={layers}, hidden={hidden}")
     return model, tokenizer
 
 
