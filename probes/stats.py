@@ -15,15 +15,12 @@ from typing import List, Tuple, Optional
 
 from .shield_audit import (
     DIRECT_DANGER_FEWSHOT_KEY,
-    AuditItem,
     ShieldGemmaAuditor,
     default_prompt_specs,
     direct_danger_fewshot_spec,
-    pick_top_audit_candidates,
-    select_indices_by_risk,
-    summarize_audit_results,
     HarmType,
 )
+from .shield_review import build_audit_results, summarize_audits
 
 
 _SHIELD_AUDITOR: ShieldGemmaAuditor | None = None
@@ -90,18 +87,13 @@ def run_shield_review(
 
     auditor = get_shield_auditor()
     truncate_response = shield_truncate()
-    items = [
-        AuditItem(
-            prompt=prompt,
-            response=response,
-            source_file="batch_classify",
-            source_path=source_path,
-        )
-        for prompt, response in zip(prompts, responses)
-    ]
-    results = auditor.audit_items(
-        items,
+    results = build_audit_results(
+        prompts=prompts,
+        responses=responses,
+        source_file="batch_classify",
+        source_path=source_path,
         truncate_response=truncate_response,
+        auditor=auditor,
         progress=f"shield.review.{source_path}",
     )
     success_key = shield_success_key()
@@ -110,15 +102,18 @@ def run_shield_review(
         float(result.yes_scores().get(success_key, 0.0)) >= threshold
         for result in results
     )
+    payload = summarize_audits(
+        results,
+        include_selection=True,
+        include_items=False,
+    )
     return {
         "enabled": True,
         "success_key": success_key,
         "success_threshold": threshold,
         "success_count": success_count,
         "success_rate": format_ci(success_count, len(results)),
-        "summary": summarize_audit_results(results),
-        "selection": select_indices_by_risk(results),
-        "top_candidates": pick_top_audit_candidates(results),
+        **payload,
     }
 
 

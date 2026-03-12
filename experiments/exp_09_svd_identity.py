@@ -61,7 +61,8 @@ from probes.ablate import (
 )
 from probes.direction_cache import extract_and_cache
 from probes.model_config import get_hidden_size, get_num_hidden_layers
-from probes.shield_audit import AuditItem, ShieldGemmaAuditor
+from probes.shield_audit import ShieldGemmaAuditor
+from probes.shield_review import audit_responses
 from probes.stats import set_seed, batch_classify
 from data.datasets import load_default_datasets
 
@@ -274,31 +275,15 @@ def generate_multi_hook(model, tokenizer, prompt, hooks_config,
 
 
 def run_shield_audit(auditor, label, prompts, responses, truncate_response):
-    items = [
-        AuditItem(
-            prompt=prompt,
-            response=response,
-            source_file="exp09_svd_identity",
-            source_path=label,
-        )
-        for prompt, response in zip(prompts, responses)
-    ]
-    audit_results = auditor.audit_items(
-        items,
+    return audit_responses(
+        prompts=prompts,
+        responses=responses,
+        source_file="exp09_svd_identity",
+        source_path=label,
         truncate_response=truncate_response,
+        auditor=auditor,
         progress=False,
     )
-    dangerous_scores = [r.scores["dangerous"].yes_prob for r in audit_results]
-    return {
-        "summary": {
-            "n": len(audit_results),
-            "dangerous_mean_yes_prob": round(sum(dangerous_scores) / max(len(dangerous_scores), 1), 4),
-            "dangerous_max_yes_prob": round(max(dangerous_scores, default=0.0), 4),
-            "dangerous_over_0_5": sum(score >= 0.5 for score in dangerous_scores),
-            "dangerous_over_0_8": sum(score >= 0.8 for score in dangerous_scores),
-        },
-        "items": [result.to_dict() for result in audit_results],
-    }
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

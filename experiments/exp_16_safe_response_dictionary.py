@@ -32,13 +32,7 @@ from probes.response_spans import (
     collect_segment_hidden_states,
     summarize_span_records,
 )
-from probes.shield_audit import (
-    AuditItem,
-    ShieldGemmaAuditor,
-    pick_top_audit_candidates,
-    select_indices_by_risk,
-    summarize_audit_results,
-)
+from probes.shield_review import audit_responses
 from probes.stats import set_seed
 
 
@@ -100,31 +94,17 @@ def run_shield_audit(
     safe_max_prob: float,
     unsafe_min_prob: float,
 ):
-    auditor = ShieldGemmaAuditor()
-    items = [
-        AuditItem(
-            prompt=prompt,
-            response=response,
-            source_file="exp16_safe_response_dictionary",
-            source_path=source_path,
-        )
-        for prompt, response in zip(prompts, responses)
-    ]
-    results = auditor.audit_items(
-        items,
+    return audit_responses(
+        prompts=prompts,
+        responses=responses,
+        source_file="exp16_safe_response_dictionary",
+        source_path=source_path,
         truncate_response=truncate_response,
         progress=f"exp16.shield.{source_path}",
+        include_selection=True,
+        safe_max_prob=safe_max_prob,
+        unsafe_min_prob=unsafe_min_prob,
     )
-    return {
-        "summary": summarize_audit_results(results),
-        "top_candidates": pick_top_audit_candidates(results),
-        "selection": select_indices_by_risk(
-            results,
-            safe_max_prob=safe_max_prob,
-            unsafe_min_prob=unsafe_min_prob,
-        ),
-        "items": [result.to_dict() for result in results],
-    }
 
 
 def filter_records_by_indices(records, allowed_indices):

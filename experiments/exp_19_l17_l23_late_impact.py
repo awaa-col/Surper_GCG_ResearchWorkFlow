@@ -45,12 +45,8 @@ from probes.response_spans import (
     collect_segment_hidden_states,
     summarize_span_records,
 )
-from probes.shield_audit import (
-    AuditItem,
-    ShieldGemmaAuditor,
-    pick_top_audit_candidates,
-    summarize_audit_results,
-)
+from probes.shield_audit import ShieldGemmaAuditor
+from probes.shield_review import audit_responses
 from probes.stats import set_seed
 
 
@@ -153,13 +149,13 @@ def generate_with_hook_specs(
 ) -> str:
     text = _build_prompt(tokenizer, prompt)
     inputs = tokenizer(text, return_tensors="pt").to(model.device)
-        handles = []
-        try:
-            for layer_idx, hook_fn in hook_specs:
-                handles.append(get_transformer_layer(model, layer_idx).register_forward_hook(hook_fn))
-            with torch.no_grad():
-                out = deterministic_generate(
-                    model,
+    handles = []
+    try:
+        for layer_idx, hook_fn in hook_specs:
+            handles.append(get_transformer_layer(model, layer_idx).register_forward_hook(hook_fn))
+        with torch.no_grad():
+            out = deterministic_generate(
+                model,
                 **inputs,
                 max_new_tokens=max_new_tokens,
             )
@@ -207,35 +203,17 @@ def run_shield_audit(
     truncate_response: int,
     auditor: ShieldGemmaAuditor | None = None,
 ) -> dict:
-    auditor = auditor or ShieldGemmaAuditor()
-    items = [
-        AuditItem(
-            prompt=row["prompt"],
-            response=response,
-            source_file="exp19_l17_l23_late_impact",
-            source_path=source_path,
-            meta={"topic": row["topic"]},
-        )
-        for row, response in zip(prompt_rows, responses)
-    ]
-    results = auditor.audit_items(
-        items,
+    return audit_responses(
+        prompts=[str(row["prompt"]) for row in prompt_rows],
+        responses=responses,
+        source_file="exp19_l17_l23_late_impact",
+        source_path=source_path,
         truncate_response=truncate_response,
+        auditor=auditor,
+        metas=[{"topic": row["topic"]} for row in prompt_rows],
         progress=f"exp19.shield.{source_path}",
+        group_by_meta_key="topic",
     )
-    topic_groups: dict[str, list] = defaultdict(list)
-    for result in results:
-        topic = str((result.meta or {}).get("topic", "unknown"))
-        topic_groups[topic].append(result)
-    return {
-        "summary": summarize_audit_results(results),
-        "summary_by_topic": {
-            topic: summarize_audit_results(topic_results)
-            for topic, topic_results in sorted(topic_groups.items())
-        },
-        "top_candidates": pick_top_audit_candidates(results),
-        "items": [result.to_dict() for result in results],
-    }
 
 
 def collect_prompt_states_with_hooks(
