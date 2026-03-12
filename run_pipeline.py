@@ -24,8 +24,112 @@ class ExperimentSpec:
     stage: str
     default_args: tuple[str, ...] = ()
     arg_aliases: dict[str, str] | None = None
+    input_bindings: dict[str, str] | None = None
     kind: str = "experiment"
     use_default_output: bool = False
+
+
+PREP_SCOPE_SPECS = [
+    ExperimentSpec(
+        script="experiments/exp_16_safe_response_dictionary.py",
+        output_name="exp16_safe_response_dictionary_full.json",
+        stage="prep_scope",
+        arg_aliases={
+            "seed": "--seed",
+            "n_train": "--n_train_exec",
+            "n_eval": "--n_per_group",
+            "max_new_tokens": "--max_new_tokens",
+        },
+    ),
+    ExperimentSpec(
+        script="experiments/exp_17_gemma_scope_feature_probe.py",
+        output_name="exp17_gemma_scope_feature_probe_full.json",
+        stage="prep_scope",
+        arg_aliases={
+            "seed": "--seed",
+            "n_train": "",
+            "n_eval": "",
+            "max_new_tokens": "",
+        },
+        input_bindings={
+            "--input": "exp16_full",
+        },
+    ),
+]
+
+
+FAMILY_MAP_CORE_SPECS = [
+    ExperimentSpec(
+        script="experiments/exp_27_vector_effect_atlas.py",
+        output_name="exp27_vector_effect_atlas.json",
+        stage="family_map",
+        arg_aliases={
+            "seed": "--seed",
+            "n_train": "--n_train_exec",
+            "n_eval": "--n_eval_per_group",
+            "max_new_tokens": "--max_new_tokens",
+        },
+        input_bindings={
+            "--exp17_input": "exp17_full",
+        },
+    ),
+    ExperimentSpec(
+        script="experiments/exp_28_detect_family_causal.py",
+        output_name="exp28_detect_family_causal.json",
+        stage="family_map",
+        arg_aliases={
+            "seed": "--seed",
+            "n_train": "--n_train_exec",
+            "n_eval": "--n_eval_per_group",
+            "max_new_tokens": "--max_new_tokens",
+        },
+        input_bindings={
+            "--exp17_input": "exp17_full",
+        },
+    ),
+    ExperimentSpec(
+        script="experiments/exp_29_pure_detect_disentangle.py",
+        output_name="exp29_pure_detect_disentangle.json",
+        stage="family_map",
+        arg_aliases={
+            "seed": "--seed",
+            "n_train": "--n_train_exec",
+            "n_eval": "--n_eval_per_group",
+            "max_new_tokens": "--max_new_tokens",
+        },
+        input_bindings={
+            "--exp17_input": "exp17_full",
+        },
+    ),
+    ExperimentSpec(
+        script="experiments/exp_30_detect_signed_sweep.py",
+        output_name="exp30_detect_signed_sweep.json",
+        stage="family_map",
+        arg_aliases={
+            "seed": "--seed",
+            "n_train": "--n_train_exec",
+            "n_eval": "--n_eval_per_group",
+            "max_new_tokens": "--max_new_tokens",
+        },
+        input_bindings={
+            "--exp17_input": "exp17_full",
+        },
+    ),
+    ExperimentSpec(
+        script="experiments/exp_31_generation_step_detect_schedule.py",
+        output_name="exp31_generation_step_detect_schedule.json",
+        stage="family_map",
+        arg_aliases={
+            "seed": "--seed",
+            "n_train": "--n_train_exec",
+            "n_eval": "--n_eval_per_group",
+            "max_new_tokens": "--max_new_tokens",
+        },
+        input_bindings={
+            "--exp17_input": "exp17_full",
+        },
+    ),
+]
 
 
 PIPELINE_PRESETS: dict[str, list[ExperimentSpec]] = {
@@ -52,6 +156,7 @@ PIPELINE_PRESETS: dict[str, list[ExperimentSpec]] = {
                 "max_new_tokens": "",
             },
         ),
+        *PREP_SCOPE_SPECS,
         ExperimentSpec(
             script="experiments/exp_19_l17_l23_late_impact.py",
             output_name="exp19_l17_l23_late_impact.json",
@@ -62,65 +167,12 @@ PIPELINE_PRESETS: dict[str, list[ExperimentSpec]] = {
                 "n_eval": "--n_per_group",
                 "max_new_tokens": "--max_new_tokens",
             },
-        ),
-    ],
-    "family_map": [
-        ExperimentSpec(
-            script="experiments/exp_27_vector_effect_atlas.py",
-            output_name="exp27_vector_effect_atlas.json",
-            stage="family_map",
-            arg_aliases={
-                "seed": "--seed",
-                "n_train": "--n_train_exec",
-                "n_eval": "--n_eval_per_group",
-                "max_new_tokens": "--max_new_tokens",
-            },
-        ),
-        ExperimentSpec(
-            script="experiments/exp_28_detect_family_causal.py",
-            output_name="exp28_detect_family_causal.json",
-            stage="family_map",
-            arg_aliases={
-                "seed": "--seed",
-                "n_train": "--n_train_exec",
-                "n_eval": "--n_eval_per_group",
-                "max_new_tokens": "--max_new_tokens",
-            },
-        ),
-        ExperimentSpec(
-            script="experiments/exp_29_pure_detect_disentangle.py",
-            output_name="exp29_pure_detect_disentangle.json",
-            stage="family_map",
-            arg_aliases={
-                "seed": "--seed",
-                "n_train": "--n_train_exec",
-                "n_eval": "--n_eval_per_group",
-                "max_new_tokens": "--max_new_tokens",
-            },
-        ),
-        ExperimentSpec(
-            script="experiments/exp_30_detect_signed_sweep.py",
-            output_name="exp30_detect_signed_sweep.json",
-            stage="family_map",
-            arg_aliases={
-                "seed": "--seed",
-                "n_train": "--n_train_exec",
-                "n_eval": "--n_eval_per_group",
-                "max_new_tokens": "--max_new_tokens",
-            },
-        ),
-        ExperimentSpec(
-            script="experiments/exp_31_generation_step_detect_schedule.py",
-            output_name="exp31_generation_step_detect_schedule.json",
-            stage="family_map",
-            arg_aliases={
-                "seed": "--seed",
-                "n_train": "--n_train_exec",
-                "n_eval": "--n_eval_per_group",
-                "max_new_tokens": "--max_new_tokens",
+            input_bindings={
+                "--exp17_input": "exp17_full",
             },
         ),
     ],
+    "family_map": [*PREP_SCOPE_SPECS, *FAMILY_MAP_CORE_SPECS],
     "attack_eval": [
         ExperimentSpec(
             script="experiments/exp_38_whitebox_attack_feasibility.py",
@@ -155,14 +207,13 @@ PIPELINE_PRESETS: dict[str, list[ExperimentSpec]] = {
     ],
 }
 PIPELINE_PRESETS["large_model_attack"] = (
-    PIPELINE_PRESETS["gate_scan"][:2]
-    + [PIPELINE_PRESETS["gate_scan"][2]]
+    PIPELINE_PRESETS["gate_scan"]
     + PIPELINE_PRESETS["attack_eval"]
     + PIPELINE_PRESETS["analysis_attack_eval"]
 )
 PIPELINE_PRESETS["full"] = (
     PIPELINE_PRESETS["gate_scan"]
-    + PIPELINE_PRESETS["family_map"]
+    + FAMILY_MAP_CORE_SPECS
     + PIPELINE_PRESETS["attack_eval"]
     + PIPELINE_PRESETS["analysis_attack_eval"]
 )
@@ -174,7 +225,12 @@ def script_text(script_relpath: str) -> str:
 
 def has_flag(script_relpath: str, flag: str) -> bool:
     text = script_text(script_relpath)
-    return f'add_argument("{flag}"' in text or f"add_argument('{flag}'" in text
+    escaped = re.escape(flag)
+    patterns = [
+        rf"add_argument\(\s*\"{escaped}\"",
+        rf"add_argument\(\s*'{escaped}'",
+    ]
+    return any(re.search(pattern, text, flags=re.MULTILINE) for pattern in patterns)
 
 
 def infer_common_aliases(script_relpath: str) -> dict[str, str]:
@@ -263,6 +319,7 @@ def build_command(
     n_eval: int | None,
     max_new_tokens: int | None,
     extra_args: dict[str, str],
+    artifact_paths: dict[str, Path],
 ) -> list[str]:
     cmd = [python_bin, spec.script]
     if spec.kind == "experiment":
@@ -287,6 +344,10 @@ def build_command(
             cmd.extend(["--output_blind", str(blind_path)])
         if hf_token and has_flag(spec.script, "--hf_token"):
             cmd.extend(["--hf_token", hf_token])
+        for flag, artifact_key in (spec.input_bindings or {}).items():
+            dependency_path = artifact_paths[artifact_key]
+            if has_flag(spec.script, flag):
+                cmd.extend([flag, str(dependency_path)])
     else:
         exp38_json = output_path.parent / "exp38_whitebox_attack_feasibility.json"
         exp39_json = output_path.parent / "exp39_context_knowledge_bypass.json"
@@ -350,6 +411,7 @@ def main() -> int:
         help="Append raw KEY=VALUE pairs. Use this only for script-specific options.",
     )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--resume", action="store_true")
     parser.add_argument("--list-presets", action="store_true")
     args = parser.parse_args()
 
@@ -376,9 +438,14 @@ def main() -> int:
         "extra_args": extra_args,
         "experiments": [],
     }
+    artifact_paths: dict[str, Path] = {}
 
     for idx, spec in enumerate(preset_specs, start=1):
         output_path = run_dir / spec.output_name
+        if spec.output_name == "exp16_safe_response_dictionary_full.json":
+            artifact_paths["exp16_full"] = output_path
+        elif spec.output_name == "exp17_gemma_scope_feature_probe_full.json":
+            artifact_paths["exp17_full"] = output_path
         cmd = build_command(
             spec,
             python_bin=args.python_bin,
@@ -390,6 +457,7 @@ def main() -> int:
             n_eval=args.n_eval,
             max_new_tokens=args.max_new_tokens,
             extra_args=extra_args,
+            artifact_paths=artifact_paths,
         )
         manifest["experiments"].append(
             {
@@ -416,6 +484,10 @@ def main() -> int:
         print(f"\n[pipeline] stage={item['stage']} script={item['script']}")
         print(f"[pipeline] cmd: {pretty}")
         if args.dry_run:
+            continue
+        output_path = Path(str(item["output"]))
+        if args.resume and output_path.exists():
+            print(f"[pipeline] resume: skip existing output {output_path.name}")
             continue
         env = os.environ.copy()
         env.setdefault("SUPER_GCG_ENABLE_SHIELD_AUDIT", "1")
