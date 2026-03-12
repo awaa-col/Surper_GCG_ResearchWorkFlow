@@ -15,6 +15,8 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional
 from tqdm import tqdm
 
+from probes.model_config import get_num_hidden_layers
+
 
 # ─── 内部工具 ───
 
@@ -79,7 +81,7 @@ def collect_hidden_states(
     else:
         device = torch.device(device)
 
-    num_layers = model.config.num_hidden_layers
+    num_layers = get_num_hidden_layers(model.config)
     if layers is None:
         layers = list(range(num_layers))
 
