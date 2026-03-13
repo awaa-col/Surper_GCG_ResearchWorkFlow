@@ -57,6 +57,7 @@ from probes.ablate import (  # noqa: E402
 )
 from probes.direction_cache import extract_and_cache  # noqa: E402
 from probes.extract import _build_prompt  # noqa: E402
+from probes.model_structure import get_transformer_layer, get_transformer_layers  # noqa: E402
 from probes.review_labels import label_response, summarize_label_records  # noqa: E402
 from probes.shield_audit import (  # noqa: E402
     DIRECT_DANGER_FEWSHOT_KEY,
@@ -144,7 +145,7 @@ def generate_one(
     handles = []
     try:
         for layer_idx, hook_fn in hook_specs:
-            handles.append(model.model.layers[layer_idx].register_forward_hook(hook_fn))
+            handles.append(get_transformer_layer(model, layer_idx).register_forward_hook(hook_fn))
         with torch.no_grad():
             out = deterministic_generate(model, **inputs, max_new_tokens=max_new_tokens)
         new_tokens = out[0, inputs["input_ids"].shape[1]:]
@@ -160,6 +161,7 @@ def build_hooks(
     condition: str,
     *,
     r_exec: torch.Tensor,
+    num_layers: int,
 ) -> list[tuple[int, Any]]:
     """
     Returns list of (layer_idx, hook_fn) to register.
@@ -177,7 +179,7 @@ def build_hooks(
             (23, _make_ablate_hook(r_exec)),
         ]
     if condition == "multi_layer_exec_off":
-        return [(l, _make_ablate_hook(r_exec)) for l in ALL_LAYERS]
+        return [(l, _make_ablate_hook(r_exec)) for l in range(num_layers)]
     if condition == "alpha_add_neg8":
         return [(17, _make_addition_hook(r_exec, alpha=-8.0))]
     if condition == "alpha_add_neg4":
@@ -201,13 +203,14 @@ def run_condition(
     r_exec: torch.Tensor,
     injected_knowledge_map: dict[str, str],
     max_new_tokens: int,
+    num_layers: int,
 ) -> list[dict[str, Any]]:
     """
     Generate responses for all rows under a given condition.
     Returns list of row-level dicts with 'response' field populated.
     """
     active_model = model
-    hook_specs = build_hooks(condition, r_exec=r_exec)
+    hook_specs = build_hooks(condition, r_exec=r_exec, num_layers=num_layers)
 
     results: list[dict[str, Any]] = []
     if condition == "weight_ortho":
@@ -565,6 +568,7 @@ def main():
     print("[exp39] Loading model...")
     model, tokenizer = load_model(args.model, args.hf_token)
     device = next(model.parameters()).device
+    num_layers = len(get_transformer_layers(model))
 
     print("[exp39] Extracting r_exec direction...")
     r_exec = extract_and_cache(
@@ -616,6 +620,7 @@ def main():
             r_exec=r_exec,
             injected_knowledge_map=INJECTED_KNOWLEDGE_MAP,
             max_new_tokens=args.max_new_tokens,
+            num_layers=num_layers,
         )
 
         # Label first (cheap, no GPU)
