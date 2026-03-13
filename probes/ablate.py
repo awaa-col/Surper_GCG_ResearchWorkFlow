@@ -15,8 +15,6 @@ from __future__ import annotations
 import torch
 from typing import Dict, List, Optional
 from contextlib import contextmanager
-import copy
-
 from probes.model_structure import get_embed_tokens_module, get_transformer_layer, get_transformer_layers
 
 
@@ -120,6 +118,78 @@ def weight_orthogonalize(model, direction: torch.Tensor) -> None:
             layer.mlp.down_proj.weight.copy_(_ortho_matrix(down, d))
 
     print(f"[weight_ortho] Orthogonalized {len(get_transformer_layers(model))} layers + embedding")
+
+
+def capture_weight_orthogonalize_state(model) -> dict[str, torch.Tensor]:
+    """Save only the weights touched by weight_orthogonalize()."""
+    saved: dict[str, torch.Tensor] = {}
+
+    try:
+        embed_module = get_embed_tokens_module(model)
+    except AttributeError:
+        embed_module = None
+    if embed_module is not None:
+        saved["embed_tokens.weight"] = embed_module.weight.detach().cpu().clone()
+
+    for idx, layer in enumerate(get_transformer_layers(model)):
+        saved[f"layers.{idx}.self_attn.o_proj.weight"] = (
+            layer.self_attn.o_proj.weight.detach().cpu().clone()
+        )
+        saved[f"layers.{idx}.mlp.down_proj.weight"] = (
+            layer.mlp.down_proj.weight.detach().cpu().clone()
+        )
+
+    return saved
+
+
+def restore_weight_orthogonalize_state(
+    model,
+    saved_state: dict[str, torch.Tensor],
+) -> None:
+    """Restore the subset of weights touched by weight_orthogonalize()."""
+    with torch.no_grad():
+        try:
+            embed_module = get_embed_tokens_module(model)
+        except AttributeError:
+            embed_module = None
+        if embed_module is not None and "embed_tokens.weight" in saved_state:
+            embed_module.weight.copy_(
+                saved_state["embed_tokens.weight"].to(
+                    device=embed_module.weight.device,
+                    dtype=embed_module.weight.dtype,
+                )
+            )
+
+        for idx, layer in enumerate(get_transformer_layers(model)):
+            o_key = f"layers.{idx}.self_attn.o_proj.weight"
+            down_key = f"layers.{idx}.mlp.down_proj.weight"
+            if o_key in saved_state:
+                layer.self_attn.o_proj.weight.copy_(
+                    saved_state[o_key].to(
+                        device=layer.self_attn.o_proj.weight.device,
+                        dtype=layer.self_attn.o_proj.weight.dtype,
+                    )
+                )
+            if down_key in saved_state:
+                layer.mlp.down_proj.weight.copy_(
+                    saved_state[down_key].to(
+                        device=layer.mlp.down_proj.weight.device,
+                        dtype=layer.mlp.down_proj.weight.dtype,
+                    )
+                )
+
+    print("[weight_ortho] Restored saved orthogonalized weights subset")
+
+
+@contextmanager
+def weight_orthogonalize_context(model, direction: torch.Tensor):
+    """Apply weight orthogonalization for a scoped block, then restore touched weights."""
+    saved_state = capture_weight_orthogonalize_state(model)
+    try:
+        weight_orthogonalize(model, direction)
+        yield model
+    finally:
+        restore_weight_orthogonalize_state(model, saved_state)
 
 
 def undo_weight_orthogonalize(model, original_state_dict: dict) -> None:

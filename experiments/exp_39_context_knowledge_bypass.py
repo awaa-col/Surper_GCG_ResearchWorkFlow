@@ -33,7 +33,6 @@ Key design choices vs Exp26/27:
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import os
 import sys
@@ -54,7 +53,7 @@ from experiments.exp_19_l17_l23_late_impact import (  # noqa: E402
 from probes.ablate import (  # noqa: E402
     _make_ablate_hook,
     _make_addition_hook,
-    weight_orthogonalize,
+    weight_orthogonalize_context,
 )
 from probes.direction_cache import extract_and_cache  # noqa: E402
 from probes.extract import _build_prompt  # noqa: E402
@@ -202,16 +201,36 @@ def run_condition(
     r_exec: torch.Tensor,
     injected_knowledge_map: dict[str, str],
     max_new_tokens: int,
-    ortho_model,  # pre-built weight_ortho model or None
 ) -> list[dict[str, Any]]:
     """
     Generate responses for all rows under a given condition.
     Returns list of row-level dicts with 'response' field populated.
     """
-    active_model = ortho_model if condition == "weight_ortho" else model
+    active_model = model
     hook_specs = build_hooks(condition, r_exec=r_exec)
 
     results: list[dict[str, Any]] = []
+    if condition == "weight_ortho":
+        with weight_orthogonalize_context(model, r_exec):
+            for row in tqdm(rows, desc=f"exp39.gen.{condition}"):
+                topic = row["topic"]
+                knowledge = injected_knowledge_map.get(topic)
+                response = generate_one(
+                    active_model,
+                    tokenizer,
+                    row["prompt"],
+                    injected_knowledge=knowledge,
+                    hook_specs=hook_specs,
+                    max_new_tokens=max_new_tokens,
+                )
+                results.append({
+                    "topic": topic,
+                    "prompt": row["prompt"],
+                    "injected_knowledge": knowledge,
+                    "response": response,
+                })
+        return results
+
     for row in tqdm(rows, desc=f"exp39.gen.{condition}"):
         topic = row["topic"]
         knowledge = injected_knowledge_map.get(topic)
@@ -558,13 +577,6 @@ def main():
     )[TARGET_LAYER].to(device)
 
     # ── Weight-ortho model (built once, used only for weight_ortho condition) ──
-    ortho_model = None
-    if "weight_ortho" in conditions:
-        print("[exp38] Building weight-orthogonalized model copy...")
-        ortho_model = copy.deepcopy(model)
-        weight_orthogonalize(ortho_model, r_exec)
-        ortho_model.eval()
-
     # ── Eval prompts ───────────────────────────────────────────────────────────
     print("[exp38] Loading eval prompts...")
     topic_payload = load_topic_banks(
@@ -604,7 +616,6 @@ def main():
             r_exec=r_exec,
             injected_knowledge_map=INJECTED_KNOWLEDGE_MAP,
             max_new_tokens=args.max_new_tokens,
-            ortho_model=ortho_model,
         )
 
         # Label first (cheap, no GPU)

@@ -24,7 +24,6 @@ import json
 import os
 import sys
 import random
-import copy
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -36,7 +35,7 @@ from probes.extract import collect_hidden_states, mean_diff_direction
 from probes.model_config import get_hidden_size, get_num_hidden_layers
 from probes.ablate import (
     generate_normal,
-    weight_orthogonalize,
+    weight_orthogonalize_context,
 )
 from probes.judge import is_refusal, is_incoherent, refusal_rate
 from probes.stats import run_shield_review
@@ -134,22 +133,16 @@ def main():
     direction_r = extract_direction(model, tokenizer, args.extract_layer)
     print(f"  Direction norm: {direction_r.norm():.4f}")
 
-    # Step 2：保存原始权重
-    print("[exp_02] Saving original weights...")
-    original_state = copy.deepcopy(model.state_dict())
-
-    # Step 3：先测原始模型的注入行为（baseline）
+    # Step 2：先测原始模型的注入行为（baseline）
     print("\n[exp_02] === BASELINE (original model) ===")
     harmful_test, _ = load_default_datasets(n_harmful=args.n_test, val=True)
     baseline_results = run_scenario_test(model, tokenizer, harmful_test, n_per_scenario=args.n_test)
 
-    # Step 4：Weight orthogonalization
+    # Step 3：Weight orthogonalization
     print("\n[exp_02] Applying weight orthogonalization...")
-    weight_orthogonalize(model, direction_r)
-
-    # Step 5：测消融后模型
-    print("\n[exp_02] === AFTER WEIGHT ORTHOGONALIZATION ===")
-    ortho_results = run_scenario_test(model, tokenizer, harmful_test, n_per_scenario=args.n_test)
+    with weight_orthogonalize_context(model, direction_r):
+        print("\n[exp_02] === AFTER WEIGHT ORTHOGONALIZATION ===")
+        ortho_results = run_scenario_test(model, tokenizer, harmful_test, n_per_scenario=args.n_test)
 
     # 统计
     def compute_stats(scenario_results):
