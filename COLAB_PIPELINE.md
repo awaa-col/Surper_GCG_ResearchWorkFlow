@@ -1,7 +1,11 @@
 # Colab Pipeline
 
-This is the recommended path for moving the current Gemma-1B mechanism workflow
-to a larger model on Colab.
+This file now distinguishes two things:
+
+- the accurate starting point for `12B` mechanism rediscovery,
+- the older `1B -> large model` transfer-validation presets kept for backward compatibility.
+
+If your goal is accurate `12B` mechanism discovery, do not start with attack evaluation.
 
 ## 1. Environment
 
@@ -37,13 +41,32 @@ SCOPE_TOP_K_FAMILY = 8
 MIN_GROUP_SIZE = 2
 ```
 
-## 2. First pass
+## 2. Accurate Starting Point
 
-Do not jump straight to the full stack. Start with:
+Start with evaluation calibration first:
 
 ```bash
 !python run_pipeline.py \
-  --preset gate_scan \
+  --preset mechanism_discovery_foundation \
+  --run-name "$RUN_NAME" \
+  $RESUME
+```
+
+Today this preset only runs:
+
+- `exp_11_review_pack.py`
+
+That is intentional. It is the only stage that currently enters the `12B`
+mechanism-discovery mainline without carrying the old `1B` layer prior.
+
+## 3. Scan Pipeline
+
+If you need the current larger-model scan preset before the old `1B`-anchored
+scan logic is refactored, run:
+
+```bash
+!python run_pipeline.py \
+  --preset mechanism_scan_legacy \
   --run-name "$RUN_NAME" \
   $RESUME \
   --model google/gemma-3-12b-it \
@@ -54,12 +77,22 @@ Do not jump straight to the full stack. Start with:
   --min-group-size $MIN_GROUP_SIZE
 ```
 
-This checks whether the larger model still has a comparable main gate and which
-layers matter.
+This preset runs:
 
-## 3. Main attack validation
+- `exp_00_diagnosis.py`
+- `exp_01_refusal.py`
+- `exp_01b_cross_layer.py`
+- `exp_16_safe_response_dictionary.py`
+- `exp_17_gemma_scope_feature_probe.py`
+- `exp_19_l17_l23_late_impact.py`
 
-If the gate scan looks real, run:
+This is the current scan pipeline for data collection. It is still provisional:
+the logic is useful for gathering `12B` scan evidence, but it is not yet the
+final prior-free `12B` mechanism-discovery mainline.
+
+## 4. Main Attack Validation
+
+Only run this after you explicitly decide to stay on the legacy transfer path:
 
 ```bash
 !python run_pipeline.py \
@@ -83,7 +116,7 @@ This preset runs:
 - `exp_39_context_knowledge_bypass.py`
 - `analysis/format_attack_reports.py`
 
-## 4. Optional deeper mechanism pass
+## 5. Optional Deeper Legacy Pass
 
 If you want the family-structure and detect-side picture too:
 
@@ -103,7 +136,7 @@ If you want maximum coverage and are willing to pay the runtime cost:
   --hf-token "$HF_TOKEN"
 ```
 
-## 5. Where results go
+## 6. Where Results Go
 
 Outputs are written to:
 
@@ -136,9 +169,10 @@ For `all_experiments`, many scripts intentionally keep writing to their native
 default locations under `results/`, because later experiments depend on
 those default file names.
 
-## 6. Practical Colab advice
+## 7. Practical Advice
 
-- Prefer `gate_scan` first. Bigger models may not preserve the exact 1B layer story.
+- Prefer `mechanism_discovery_foundation` first.
+- Treat `legacy_gate_scan` as a migration diagnostic, not as ground-truth discovery.
 - If the run OOMs, add:
   - `--n-train 64`
   - `--n-eval 2`
@@ -150,16 +184,20 @@ those default file names.
 - For Colab restarts, keep the same `RUN_NAME` and add `--resume`.
 - Copy the entire `results/pipeline_runs/...` directory back to Drive after each major run.
 
-## 7. Interpreting the stages
+## 8. Interpreting the Stages
 
-- `gate_scan`: "Is there still a causal refusal gate?"
+- `eval_calibration`: "Are our labels and review artifacts stable enough to trust later results?"
+- `legacy_gate_scan`: "Does the larger model still resemble the old 1B gate story?"
 - `family_map`: "What downstream safe families depend on that gate?"
 - `attack_eval`: "Does the open gate become a stable actionable attack path?"
 
-For large models, this order keeps you from over-reading a single attack result
-without first checking whether the gate geometry still matches the 1B regime.
+For accurate `12B` mechanism work, the intended order is:
 
-## 8. Transfer caution
+1. `eval_calibration`
+2. refactor the old gate/detect/late scripts to remove `1B` layer priors
+3. only then rerun discovery and attack acceptance
+
+## 9. Transfer Caution
 
 Your 1B findings are a strong hypothesis, not a guaranteed transplant.
 
@@ -175,3 +213,10 @@ What must be re-validated on larger models:
 - whether `r_exec` stays the dominant causal handle,
 - whether knowledge injection still separates "capacity limit" from "safety suppression",
 - whether stronger models replace 1B's low-fidelity unsafe output with cleaner unsafe execution.
+
+Two specific scripts remain blocked on this point:
+
+- `exp_18_l17_vector_quantification.py`
+- `exp_19_l17_l23_late_impact.py`
+
+They must be refactored before they can re-enter the accurate `12B` mainline.

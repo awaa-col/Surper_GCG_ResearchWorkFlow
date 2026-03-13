@@ -62,6 +62,40 @@ PREP_SCOPE_SPECS = [
 ]
 
 
+EVAL_CALIBRATION_SPECS = [
+    ExperimentSpec(
+        script="experiments/exp_11_review_pack.py",
+        output_name="exp11_review_pack.jsonl",
+        stage="eval_calibration",
+        arg_aliases={
+            "seed": "",
+            "n_train": "",
+            "n_eval": "",
+            "max_new_tokens": "",
+            "scope_top_k_family": "",
+            "min_group_size": "",
+        },
+    ),
+]
+
+
+BASELINE_DIAGNOSIS_SPECS = [
+    ExperimentSpec(
+        script="experiments/exp_00_diagnosis.py",
+        output_name="exp00_diagnosis.json",
+        stage="baseline_diagnosis",
+        arg_aliases={
+            "seed": "",
+            "n_train": "",
+            "n_eval": "",
+            "max_new_tokens": "",
+            "scope_top_k_family": "",
+            "min_group_size": "",
+        },
+    ),
+]
+
+
 FAMILY_MAP_CORE_SPECS = [
     ExperimentSpec(
         script="experiments/exp_27_vector_effect_atlas.py",
@@ -147,7 +181,9 @@ FAMILY_MAP_CORE_SPECS = [
 
 
 PIPELINE_PRESETS: dict[str, list[ExperimentSpec]] = {
-    "gate_scan": [
+    "baseline_diagnosis": [*BASELINE_DIAGNOSIS_SPECS],
+    "eval_calibration": [*EVAL_CALIBRATION_SPECS],
+    "legacy_gate_scan": [
         ExperimentSpec(
             script="experiments/exp_01_refusal.py",
             output_name="exp01_refusal.json",
@@ -222,6 +258,15 @@ PIPELINE_PRESETS: dict[str, list[ExperimentSpec]] = {
         ),
     ],
 }
+PIPELINE_PRESETS["gate_scan"] = PIPELINE_PRESETS["legacy_gate_scan"]
+PIPELINE_PRESETS["mechanism_discovery_foundation"] = [
+    *EVAL_CALIBRATION_SPECS,
+]
+PIPELINE_PRESETS["mechanism_scan_legacy"] = (
+    PIPELINE_PRESETS["baseline_diagnosis"]
+    + PIPELINE_PRESETS["legacy_gate_scan"]
+)
+PIPELINE_PRESETS["scan_pipeline"] = PIPELINE_PRESETS["mechanism_scan_legacy"]
 PIPELINE_PRESETS["large_model_attack"] = (
     PIPELINE_PRESETS["gate_scan"]
     + PIPELINE_PRESETS["attack_eval"]
