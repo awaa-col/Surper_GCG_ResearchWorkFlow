@@ -3,188 +3,27 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-import re
+
+from pipeline import (
+    ExperimentSpec,
+    PIPELINE_PRESETS,
+    PIPELINE_STAGES,
+    flatten_stage_specs,
+    print_preset_table,
+    print_stage_table,
+    render_stage_summary,
+)
 
 
 ROOT = Path(__file__).resolve().parent
 RESULTS_ROOT = ROOT / "results" / "pipeline_runs"
 EXPERIMENTS_ROOT = ROOT / "experiments"
-
-
-@dataclass(frozen=True)
-class ExperimentSpec:
-    script: str
-    output_name: str
-    stage: str
-    default_args: tuple[str, ...] = ()
-    arg_aliases: dict[str, str] | None = None
-    input_bindings: dict[str, str] | None = None
-    kind: str = "experiment"
-    use_default_output: bool = False
-
-
-PREP_SCOPE_SPECS = [
-    ExperimentSpec(
-        script="experiments/exp_16_safe_response_dictionary.py",
-        output_name="exp16_safe_response_dictionary_full.json",
-        stage="prep_scope",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "",
-            "min_group_size": "--min_group_size",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_17_gemma_scope_feature_probe.py",
-        output_name="exp17_gemma_scope_feature_probe_full.json",
-        stage="prep_scope",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "",
-            "n_eval": "",
-            "max_new_tokens": "",
-            "scope_top_k_family": "",
-            "min_group_size": "--min_group_size",
-        },
-        input_bindings={
-            "--input": "exp16_full",
-        },
-    ),
-]
-
-
-EVAL_CALIBRATION_SPECS = [
-    ExperimentSpec(
-        script="experiments/exp_11_review_pack.py",
-        output_name="exp11_review_pack.jsonl",
-        stage="eval_calibration",
-        arg_aliases={
-            "seed": "",
-            "n_train": "",
-            "n_eval": "",
-            "max_new_tokens": "",
-            "scope_top_k_family": "",
-            "min_group_size": "",
-        },
-    ),
-]
-
-
-BASELINE_DIAGNOSIS_SPECS = [
-    ExperimentSpec(
-        script="experiments/exp_00_diagnosis.py",
-        output_name="exp00_diagnosis.json",
-        stage="baseline_diagnosis",
-        arg_aliases={
-            "seed": "",
-            "n_train": "",
-            "n_eval": "",
-            "max_new_tokens": "",
-            "scope_top_k_family": "",
-            "min_group_size": "",
-        },
-    ),
-]
-
-
-FAMILY_MAP_CORE_SPECS = [
-    ExperimentSpec(
-        script="experiments/exp_27_vector_effect_atlas.py",
-        output_name="exp27_vector_effect_atlas.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_28_detect_family_causal.py",
-        output_name="exp28_detect_family_causal.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_29_pure_detect_disentangle.py",
-        output_name="exp29_pure_detect_disentangle.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_30_detect_signed_sweep.py",
-        output_name="exp30_detect_signed_sweep.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_31_generation_step_detect_schedule.py",
-        output_name="exp31_generation_step_detect_schedule.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-]
-
-
-PIPELINE_PRESETS: dict[str, list[ExperimentSpec]] = {
-    "baseline_diagnosis": [*BASELINE_DIAGNOSIS_SPECS],
-    "eval_calibration": [*EVAL_CALIBRATION_SPECS],
-    "mechanism_discovery_foundation": [*EVAL_CALIBRATION_SPECS],
-}
 
 
 def script_text(script_relpath: str) -> str:
@@ -241,7 +80,10 @@ def experiment_sort_key(script_relpath: str) -> tuple[int, str]:
 
 def discover_all_experiments() -> list[ExperimentSpec]:
     specs: list[ExperimentSpec] = []
-    for path in sorted(EXPERIMENTS_ROOT.rglob("exp_*.py"), key=lambda p: experiment_sort_key(str(p.relative_to(ROOT)).replace("\\", "/"))):
+    for path in sorted(
+        EXPERIMENTS_ROOT.rglob("exp_*.py"),
+        key=lambda p: experiment_sort_key(str(p.relative_to(ROOT)).replace("\\", "/")),
+    ):
         relpath = str(path.relative_to(ROOT)).replace("\\", "/")
         output_name = relpath.replace("/", "__").replace(".py", ".native")
         specs.append(
@@ -254,6 +96,7 @@ def discover_all_experiments() -> list[ExperimentSpec]:
             )
         )
     return specs
+
 
 def parse_repeated_kv(items: list[str]) -> dict[str, str]:
     parsed: dict[str, str] = {}
@@ -309,11 +152,9 @@ def build_command(
         if has_flag(spec.script, "--output") and not spec.use_default_output:
             cmd.extend(["--output", str(output_path)])
         if has_flag(spec.script, "--output_csv") and not spec.use_default_output:
-            csv_path = output_path.with_suffix(".csv")
-            cmd.extend(["--output_csv", str(csv_path)])
+            cmd.extend(["--output_csv", str(output_path.with_suffix(".csv"))])
         if has_flag(spec.script, "--output_jsonl") and not spec.use_default_output:
-            jsonl_path = output_path.with_suffix(".jsonl")
-            cmd.extend(["--output_jsonl", str(jsonl_path)])
+            cmd.extend(["--output_jsonl", str(output_path.with_suffix(".jsonl"))])
         if has_flag(spec.script, "--output_blind") and not spec.use_default_output:
             blind_path = output_path.with_name(output_path.stem + "_blind.json")
             cmd.extend(["--output_blind", str(blind_path)])
@@ -360,13 +201,6 @@ def build_command(
     return cmd
 
 
-def print_preset_table() -> None:
-    for preset_name, specs in PIPELINE_PRESETS.items():
-        print(f"{preset_name}:")
-        for spec in specs:
-            print(f"  - {spec.script}")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run the current Super GCG experiment stack as a reproducible pipeline."
@@ -375,6 +209,11 @@ def main() -> int:
         "--preset",
         default="mechanism_discovery_foundation",
         choices=sorted(PIPELINE_PRESETS),
+    )
+    parser.add_argument(
+        "--list-stages",
+        action="store_true",
+        help="List the 12B-first stage catalog, including blocked stages and manual review checkpoints.",
     )
     parser.add_argument("--model", default="google/gemma-3-1b-it")
     parser.add_argument("--hf-token", default=None)
@@ -411,8 +250,12 @@ def main() -> int:
     if args.list_presets:
         print_preset_table()
         return 0
+    if args.list_stages:
+        print_stage_table()
+        return 0
 
-    preset_specs = PIPELINE_PRESETS[args.preset]
+    selected_stage_keys = PIPELINE_PRESETS[args.preset]
+    preset_specs = flatten_stage_specs(selected_stage_keys)
     extra_args = parse_repeated_kv(args.extra_arg)
 
     run_name = build_run_name(args.preset, args.model, args.run_name)
@@ -422,6 +265,7 @@ def main() -> int:
 
     manifest: dict[str, object] = {
         "preset": args.preset,
+        "selected_stage_keys": list(selected_stage_keys),
         "model": args.model,
         "run_name": run_name,
         "run_dir": str(run_dir),
@@ -429,9 +273,30 @@ def main() -> int:
         "python_bin": args.python_bin,
         "hf_token_provided": bool(args.hf_token),
         "extra_args": extra_args,
+        "shieldgemma_policy": "ShieldGemma-first; heuristic labels are non-authoritative.",
+        "stages": [],
         "experiments": [],
     }
     artifact_paths: dict[str, Path] = {}
+
+    for stage_key in selected_stage_keys:
+        stage = PIPELINE_STAGES[stage_key]
+        manifest["stages"].append(
+            {
+                "key": stage.key,
+                "order": stage.order,
+                "title": stage.title,
+                "objective": stage.objective,
+                "why_now": stage.why_now,
+                "automation_mode": stage.automation_mode,
+                "shieldgemma_policy": stage.shieldgemma_policy,
+                "human_review_required": stage.human_review_required,
+                "human_review_points": list(stage.human_review_points),
+                "reference_1b_experiments": list(stage.reference_1b_experiments),
+                "runnable_now": stage.runnable_now,
+                "blocked_reason": stage.blocked_reason,
+            }
+        )
 
     for idx, spec in enumerate(preset_specs, start=1):
         output_path = run_dir / spec.output_name
@@ -467,11 +332,18 @@ def main() -> int:
 
     manifest_path = run_dir / "pipeline_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    stage_summary_path = run_dir / "pipeline_stage_summary.md"
+    stage_summary_path.write_text(
+        render_stage_summary(selected_stage_keys),
+        encoding="utf-8",
+    )
 
     print(f"[pipeline] preset={args.preset}")
     print(f"[pipeline] model={args.model}")
     print(f"[pipeline] run_dir={run_dir}")
     print(f"[pipeline] manifest={manifest_path}")
+    print(f"[pipeline] stage_summary={stage_summary_path}")
+    print("[pipeline] policy=ShieldGemma-first")
 
     for item in manifest["experiments"]:
         command = item["command"]
