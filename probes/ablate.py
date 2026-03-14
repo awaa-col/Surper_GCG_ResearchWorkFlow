@@ -316,3 +316,25 @@ def get_attention_weights(
         attn_last = attentions[l][0, :, -1, :]
         result[l] = attn_last.float().cpu()
     return result
+
+
+def attention_to_region(
+    attentions: Dict[int, torch.Tensor],
+    region: slice,
+) -> Dict[int, float]:
+    """
+    Summarize last-token attention mass allocated to a token region.
+
+    `get_attention_weights()` returns one tensor per layer with shape
+    [num_heads, seq_len]. This helper averages over heads first, then over the
+    selected token span, returning one scalar per layer.
+    """
+    out: Dict[int, float] = {}
+    for layer, attn in attentions.items():
+        if attn.ndim != 2:
+            continue
+        region_attn = attn[:, region]
+        if region_attn.numel() == 0:
+            continue
+        out[layer] = float(region_attn.mean().item())
+    return out
