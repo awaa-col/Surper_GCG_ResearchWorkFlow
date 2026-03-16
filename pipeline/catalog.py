@@ -18,6 +18,7 @@ class ExperimentSpec:
 @dataclass(frozen=True)
 class StageSpec:
     key: str
+    tech_id: str
     order: int
     title: str
     objective: str
@@ -26,423 +27,257 @@ class StageSpec:
     shieldgemma_policy: str
     human_review_required: bool
     human_review_points: tuple[str, ...]
-    reference_1b_experiments: tuple[str, ...]
+    experiment_ids: tuple[str, ...]
+    depends_on: tuple[str, ...]
     runnable_now: bool
     blocked_reason: str = ""
     experiment_specs: tuple[ExperimentSpec, ...] = ()
 
 
-PREP_SCOPE_SPECS = [
-    ExperimentSpec(
-        script="experiments/exp_16_safe_response_dictionary.py",
-        output_name="exp16_safe_response_dictionary_full.json",
-        stage="prep_scope",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "",
-            "min_group_size": "--min_group_size",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_17_gemma_scope_feature_probe.py",
-        output_name="exp17_gemma_scope_feature_probe_full.json",
-        stage="prep_scope",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "",
-            "n_eval": "",
-            "max_new_tokens": "",
-            "scope_top_k_family": "",
-            "min_group_size": "--min_group_size",
-        },
-        input_bindings={
-            "--input": "exp16_full",
-        },
-    ),
-]
-
-
-EVAL_CALIBRATION_SPECS = [
+T0_EVAL_CALIBRATION_SPECS = [
     ExperimentSpec(
         script="experiments/exp_11_review_pack.py",
         output_name="exp11_review_pack.jsonl",
-        stage="eval_calibration",
-        arg_aliases={
-            "seed": "",
-            "n_train": "",
-            "n_eval": "",
-            "max_new_tokens": "",
-            "scope_top_k_family": "",
-            "min_group_size": "",
-        },
+        stage="t0_eval_calibration",
+        arg_aliases={"seed": "", "n_train": "", "n_eval": "", "max_new_tokens": ""},
     ),
 ]
 
 
-BASELINE_DIAGNOSIS_SPECS = [
+T1_BASELINE_DIAGNOSIS_SPECS = [
     ExperimentSpec(
         script="experiments/exp_00_diagnosis.py",
         output_name="exp00_diagnosis.json",
-        stage="baseline_diagnosis",
-        arg_aliases={
-            "seed": "",
-            "n_train": "",
-            "n_eval": "",
-            "max_new_tokens": "",
-            "scope_top_k_family": "",
-            "min_group_size": "",
-        },
+        stage="t1_baseline_diagnosis",
+        arg_aliases={"seed": "", "n_train": "", "n_eval": "", "max_new_tokens": ""},
     ),
 ]
 
 
-GATE_DISCOVERY_SPECS = [
+T2_GATE_DISCOVERY_SPECS = [
     ExperimentSpec(
         script="experiments/exp_40_gate_discovery.py",
         output_name="exp40_gate_discovery.json",
-        stage="gate_discovery",
+        stage="t2_gate_discovery",
         arg_aliases={
             "seed": "--seed",
             "n_train": "--n_train",
             "n_eval": "--n_eval",
             "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "",
-            "min_group_size": "",
-        },
-    ),
-]
-
-
-FAMILY_MAP_CORE_SPECS = [
-    ExperimentSpec(
-        script="experiments/exp_27_vector_effect_atlas.py",
-        output_name="exp27_vector_effect_atlas.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_28_detect_family_causal.py",
-        output_name="exp28_detect_family_causal.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_29_pure_detect_disentangle.py",
-        output_name="exp29_pure_detect_disentangle.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_30_detect_signed_sweep.py",
-        output_name="exp30_detect_signed_sweep.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
-        },
-    ),
-    ExperimentSpec(
-        script="experiments/exp_31_generation_step_detect_schedule.py",
-        output_name="exp31_generation_step_detect_schedule.json",
-        stage="family_map",
-        arg_aliases={
-            "seed": "--seed",
-            "n_train": "--n_train_exec",
-            "n_eval": "--n_eval_per_group",
-            "max_new_tokens": "--max_new_tokens",
-            "scope_top_k_family": "--scope_top_k_family",
-            "min_group_size": "",
-        },
-        input_bindings={
-            "--exp17_input": "exp17_full",
         },
     ),
 ]
 
 
 PIPELINE_STAGES: dict[str, StageSpec] = {
-    "eval_calibration": StageSpec(
-        key="eval_calibration",
+    "t0_eval_calibration": StageSpec(
+        key="t0_eval_calibration",
+        tech_id="T0",
         order=0,
         title="Eval Calibration",
-        objective=(
-            "Unify 12B review artifacts and establish a ShieldGemma-first audit base "
-            "before any mechanism claims."
-        ),
-        why_now=(
-            "Every later stage depends on stable labels and on distinguishing true "
-            "unsafe release from degeneration."
-        ),
+        objective="Unify the 12B review rubric and establish ShieldGemma-first auditing before any mechanism interpretation.",
+        why_now="Every downstream stage depends on stable labels and a reliable split between true unsafe release and degeneration.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "ShieldGemma is the primary safety label source; heuristic labels may only "
-            "assist review-pack prioritization."
-        ),
+        shieldgemma_policy="ShieldGemma is the primary safety label source; heuristic labels are non-authoritative helpers only.",
         human_review_required=True,
         human_review_points=(
-            "Audit a stratified sample to verify ShieldGemma aligns with semantic risk.",
-            "Confirm the project-wide manual label rubric for hard refusal, soft refusal, resource redirect, safe educational, unsafe with disclaimer, direct unsafe, and incoherent.",
+            "Audit a stratified sample and verify the project label rubric is consistent.",
+            "Freeze the manual review policy before baseline diagnosis starts.",
         ),
-        reference_1b_experiments=("Exp11",),
+        experiment_ids=("Exp11",),
+        depends_on=(),
         runnable_now=True,
-        experiment_specs=tuple(EVAL_CALIBRATION_SPECS),
+        experiment_specs=tuple(T0_EVAL_CALIBRATION_SPECS),
     ),
-    "baseline_diagnosis": StageSpec(
-        key="baseline_diagnosis",
+    "t1_baseline_diagnosis": StageSpec(
+        key="t1_baseline_diagnosis",
+        tech_id="T1",
         order=1,
         title="Baseline Diagnosis",
-        objective=(
-            "Map the raw 12B refusal profile, prompt-format sensitivity, and obvious "
-            "jailbreak seams without importing 1B layer priors."
-        ),
-        why_now=(
-            "This is the first bottom-theory step: confirm that 12B has a stable "
-            "refusal object worth localizing."
-        ),
+        objective="Map the raw 12B refusal profile and prompt sensitivity without importing historical layer priors.",
+        why_now="This is the first real discovery step: confirm the baseline object before searching for a causal gate.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "All generated outputs are audited with ShieldGemma; no heuristic headline "
-            "rate may replace that audit."
-        ),
+        shieldgemma_policy="All baseline outputs stay ShieldGemma-audited; no heuristic headline rate may replace that audit.",
         human_review_required=True,
         human_review_points=(
-            "Inspect high-risk and low-confidence samples to separate true unsafe behavior from malformed outputs.",
-            "Write a short baseline memo before moving to gate discovery.",
+            "Inspect risky and malformed outputs separately.",
+            "Write a baseline memo before advancing to gate discovery.",
         ),
-        reference_1b_experiments=("Exp00",),
+        experiment_ids=("Exp00",),
+        depends_on=("t0_eval_calibration",),
         runnable_now=True,
-        experiment_specs=tuple(BASELINE_DIAGNOSIS_SPECS),
+        experiment_specs=tuple(T1_BASELINE_DIAGNOSIS_SPECS),
     ),
-    "gate_discovery": StageSpec(
-        key="gate_discovery",
+    "t2_gate_discovery": StageSpec(
+        key="t2_gate_discovery",
+        tech_id="T2",
         order=2,
         title="Gate Discovery",
-        objective=(
-            "Discover whether 12B has a refusal-like causal gate, and where it lives, "
-            "without assuming L17 or any fixed layer pair."
-        ),
-        why_now=(
-            "All later detect/late-family theory depends on whether a dominant gate-like "
-            "structure exists at all."
-        ),
+        objective="Search the full layer stack for candidate 12B gate layers without assuming L17 or any fixed pair.",
+        why_now="Later detect and late-family claims are illegal until a candidate gate story exists.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "Candidate layers must be ranked by ShieldGemma-audited behavior shifts plus "
-            "degeneration checks, not by heuristics alone."
-        ),
+        shieldgemma_policy="Candidate layers must be ranked by ShieldGemma-audited behavior shifts plus degeneration checks.",
         human_review_required=True,
         human_review_points=(
-            "Manually inspect top candidate layers and destructive counterexamples.",
-            "Reject candidates that only increase nonsense or repetition.",
+            "Review top candidate and destructive layers by hand.",
+            "Reject layers that only increase incoherence or repetition.",
         ),
-        reference_1b_experiments=("Exp01", "Exp01-scan"),
+        experiment_ids=("Exp01", "Exp01-scan", "Exp40"),
+        depends_on=("t1_baseline_diagnosis",),
         runnable_now=True,
-        blocked_reason="",
-        experiment_specs=tuple(GATE_DISCOVERY_SPECS),
+        experiment_specs=tuple(T2_GATE_DISCOVERY_SPECS),
     ),
-    "cross_layer_refinement": StageSpec(
-        key="cross_layer_refinement",
+    "t3_cross_layer_refinement": StageSpec(
+        key="t3_cross_layer_refinement",
+        tech_id="T3",
         order=3,
         title="Cross-Layer Refinement",
-        objective=(
-            "Test whether 12B gate structure is single-layer, pairwise cooperative, or "
-            "more distributed."
-        ),
-        why_now=(
-            "The transfer structure determines which causal story is even legal to write."
-        ),
+        objective="Test whether the gate is single-layer, pairwise cooperative, or more distributed.",
+        why_now="This determines which intervention story is even valid to write.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "Use ShieldGemma and manual sample review to separate real release from "
-            "degeneration in transfer and pair tests."
-        ),
+        shieldgemma_policy="Use ShieldGemma plus blind sample review to separate real release from degeneration.",
         human_review_required=True,
-        human_review_points=(
-            "Blind-review top single-layer and pair candidates before fixing a mainline intervention.",
-        ),
-        reference_1b_experiments=("Exp01b", "Exp01-blind"),
+        human_review_points=("Blind-review the top single-layer and pair candidates before fixing a mainline intervention.",),
+        experiment_ids=("Exp01b", "Exp01-blind"),
+        depends_on=("t2_gate_discovery",),
         runnable_now=False,
-        blocked_reason=(
-            "Current transfer logic is still organized around the historical L17/L23 story."
-        ),
+        blocked_reason="Current transfer logic still assumes the historical L17/L23 story.",
     ),
-    "detect_discovery": StageSpec(
-        key="detect_discovery",
+    "t4_detect_discovery": StageSpec(
+        key="t4_detect_discovery",
+        tech_id="T4",
         order=4,
         title="Detect Discovery",
-        objective=(
-            "Re-test whether detect-like structure exists in 12B and whether it is "
-            "distinct from the execution gate."
-        ),
-        why_now=(
-            "This is part of the bottom theory; detect cannot be inherited from the 1B "
-            "proxy story."
-        ),
+        objective="Rediscover detect-like structure in 12B without inheriting the 1B detect proxy.",
+        why_now="Detect cannot be a borrowed story; it must be rediscovered around 12B candidates.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "Behavioral interpretation remains ShieldGemma-first; geometric candidates "
-            "without reliable behavior meaning stay provisional."
-        ),
+        shieldgemma_policy="Behavior meaning stays ShieldGemma-first; geometry without stable behavior stays provisional.",
         human_review_required=True,
-        human_review_points=(
-            "Review the strongest detect-like candidates and compare them with gate candidates.",
-        ),
-        reference_1b_experiments=("Exp05", "Exp15"),
+        human_review_points=("Review the strongest detect-like candidates and compare them against gate candidates.",),
+        experiment_ids=("Exp05", "Exp15"),
+        depends_on=("t3_cross_layer_refinement",),
         runnable_now=False,
-        blocked_reason=(
-            "The existing detect workflow derives from the 1B gate story and must be reframed around 12B candidates."
-        ),
+        blocked_reason="The current detect workflow is still derived from the 1B gate story.",
     ),
-    "late_safe_response_discovery": StageSpec(
-        key="late_safe_response_discovery",
+    "t5_late_safe_response_discovery": StageSpec(
+        key="t5_late_safe_response_discovery",
+        tech_id="T5",
         order=5,
         title="Late Safe-Response Discovery",
-        objective=(
-            "Find out whether 12B still has a late safe-response organization region, "
-            "and what families can be named without overclaiming."
-        ),
-        why_now=(
-            "Only after baseline and gate theory exist can late-layer structure be interpreted safely."
-        ),
+        objective="Rediscover whether 12B has a late safe-response region and what families can be named safely.",
+        why_now="Late-layer interpretation is only legal after baseline and gate candidates exist.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "Family discovery must start from ShieldGemma-audited natural safe responses, "
-            "not heuristic soft-refusal buckets."
-        ),
+        shieldgemma_policy="Start from ShieldGemma-audited natural safe responses, not heuristic soft-refusal buckets.",
         human_review_required=True,
-        human_review_points=(
-            "Validate family naming and inspect cross-topic semantic consistency.",
-        ),
-        reference_1b_experiments=("Exp13", "Exp16", "Exp17"),
+        human_review_points=("Validate family naming and inspect cross-topic consistency.",),
+        experiment_ids=("Exp13", "Exp16"),
+        depends_on=("t3_cross_layer_refinement",),
         runnable_now=False,
-        blocked_reason=(
-            "The current Exp16/17 path assumes historical exec-ablation conditions and cannot define 12B late families yet."
-        ),
+        blocked_reason="Current Exp16 path still depends on historical exec-ablation assumptions.",
     ),
-    "candidate_quantification": StageSpec(
-        key="candidate_quantification",
+    "t6_family_feature_mapping": StageSpec(
+        key="t6_family_feature_mapping",
+        tech_id="T6",
         order=6,
+        title="Family / Feature Mapping",
+        objective="Break the late safe-response region into reusable families and probeable features.",
+        why_now="This only makes sense after the late safe-response region has been rediscovered.",
+        automation_mode="hybrid",
+        shieldgemma_policy="Feature naming must stay downstream of behaviorally audited family discovery.",
+        human_review_required=True,
+        human_review_points=("Check whether feature names remain stable across topics and templates.",),
+        experiment_ids=("Exp16", "Exp17"),
+        depends_on=("t5_late_safe_response_discovery",),
+        runnable_now=False,
+        blocked_reason="Late-family discovery is not rebuilt yet, so feature mapping would be premature.",
+    ),
+    "t7_candidate_quantification": StageSpec(
+        key="t7_candidate_quantification",
+        tech_id="T7",
+        order=7,
         title="Candidate Quantification",
-        objective="Quantify 12B candidate gates and families only after discovery is complete.",
-        why_now=(
-            "Quantification is meaningless if discovery still assumes 1B layers or vectors."
-        ),
+        objective="Quantify only 12B-discovered candidate gates and candidate families.",
+        why_now="Quantification before discovery just hardens priors into numbers.",
         automation_mode="mostly_auto",
-        shieldgemma_policy=(
-            "Quantitative ranking must stay tied to ShieldGemma-audited behavior outcomes."
-        ),
+        shieldgemma_policy="All ranking stays tied to ShieldGemma-audited behavior outcomes.",
         human_review_required=False,
         human_review_points=(),
-        reference_1b_experiments=("Exp18",),
+        experiment_ids=("Exp18",),
+        depends_on=("t3_cross_layer_refinement",),
         runnable_now=False,
-        blocked_reason="The current quantification script hardcodes L17 as the main gate candidate.",
+        blocked_reason="The current quantification script still hardcodes L17 as the main gate candidate.",
     ),
-    "minimal_causal_closure": StageSpec(
-        key="minimal_causal_closure",
-        order=7,
+    "t8_minimal_causal_closure": StageSpec(
+        key="t8_minimal_causal_closure",
+        tech_id="T8",
+        order=8,
         title="Minimal Causal Closure",
-        objective=(
-            "Connect the 12B upstream gate story with downstream late-family behavior in "
-            "the smallest defensible causal chain."
-        ),
-        why_now="This is the first stage where a mechanism narrative becomes publishable.",
+        objective="Connect the upstream gate story with downstream late-family behavior in the smallest defensible causal chain.",
+        why_now="This is the first stage where a 12B mechanism narrative becomes publishable.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "Every closure claim must be backed by ShieldGemma-audited outputs and manual inspection of key conditions."
-        ),
+        shieldgemma_policy="Every closure claim must be backed by ShieldGemma-audited outputs and key-condition sample review.",
         human_review_required=True,
-        human_review_points=(
-            "Read key baseline/gate-only/coop-only/gate-plus-coop samples before accepting a closure story.",
-        ),
-        reference_1b_experiments=("Exp19",),
+        human_review_points=("Read baseline, gate-only, late-only, and combined samples before accepting any closure story.",),
+        experiment_ids=("Exp19",),
+        depends_on=("t4_detect_discovery", "t5_late_safe_response_discovery", "t7_candidate_quantification"),
         runnable_now=False,
         blocked_reason="The historical closure script fixes target layers and late layers from 1B.",
     ),
-    "robustness": StageSpec(
-        key="robustness",
-        order=8,
+    "t9_robustness": StageSpec(
+        key="t9_robustness",
+        tech_id="T9",
+        order=9,
         title="Robustness",
-        objective=(
-            "Re-run only already-discovered 12B mechanisms across seeds, splits, and topics."
-        ),
+        objective="Stress-test only already-closed 12B mechanisms across seeds, splits, and topics.",
         why_now="This stage should never run before a 12B-specific closure exists.",
         automation_mode="mostly_auto",
-        shieldgemma_policy="Robustness summaries use ShieldGemma metrics as the default headline.",
+        shieldgemma_policy="ShieldGemma metrics remain the default robustness headline.",
         human_review_required=True,
-        human_review_points=(
-            "Inspect only disagreement and failure cases; do not manually re-label everything.",
-        ),
-        reference_1b_experiments=("Exp12",),
+        human_review_points=("Inspect disagreement and failure cases instead of relabeling everything.",),
+        experiment_ids=("Exp12",),
+        depends_on=("t8_minimal_causal_closure",),
         runnable_now=False,
-        blocked_reason="There is no 12B-specific closure to stress-test yet.",
+        blocked_reason="There is no rebuilt 12B closure to stress-test yet.",
     ),
-    "attack_acceptance": StageSpec(
-        key="attack_acceptance",
-        order=9,
+    "t10_attack_acceptance": StageSpec(
+        key="t10_attack_acceptance",
+        tech_id="T10",
+        order=10,
         title="Attack Acceptance",
         objective="Use attacks only as acceptance tests after 12B mechanism closure is known.",
-        why_now="Attack experiments are not allowed to carry the burden of discovery.",
+        why_now="Attack experiments are not allowed to carry discovery.",
         automation_mode="hybrid",
-        shieldgemma_policy=(
-            "ShieldGemma remains the acceptance metric, with manual review on apparent successes."
-        ),
+        shieldgemma_policy="ShieldGemma remains the acceptance metric, with manual review on apparent successes.",
         human_review_required=True,
-        human_review_points=(
-            "Read all apparent attack-success samples and verify they exploit the intended mechanism rather than a seam or degeneration.",
-        ),
-        reference_1b_experiments=("Exp38", "Exp39"),
+        human_review_points=("Read all apparent attack-success samples and confirm they exploit the intended mechanism.",),
+        experiment_ids=("Exp38", "Exp39"),
+        depends_on=("t8_minimal_causal_closure",),
         runnable_now=False,
         blocked_reason="No 12B mechanism closure exists yet, so attack acceptance would be premature.",
+    ),
+    "t11_trace_family_token_detail": StageSpec(
+        key="t11_trace_family_token_detail",
+        tech_id="T11",
+        order=11,
+        title="Trace / Family / Token Detail",
+        objective="Do token, step, family, and boundary-level mechanism detail only after closure is stable.",
+        why_now="Fine-grained tracing is only useful once the main mechanism path has been rebuilt.",
+        automation_mode="hybrid",
+        shieldgemma_policy="Detailed tracing remains subordinate to behaviorally validated family and closure stories.",
+        human_review_required=True,
+        human_review_points=("Sample-check traced outputs when a token or family explanation is promoted into the main narrative.",),
+        experiment_ids=("Exp17", "Exp20", "Exp21", "Exp22", "Exp23", "Exp24", "Exp25", "Exp26", "Exp27", "Exp28", "Exp29", "Exp30", "Exp31", "Exp32", "Exp33", "Exp34", "Exp35", "Exp36", "Exp37"),
+        depends_on=("t5_late_safe_response_discovery", "t8_minimal_causal_closure"),
+        runnable_now=False,
+        blocked_reason="Mainline gate/detect/late closure has not been rebuilt yet.",
     ),
 }
 
 
 PIPELINE_PRESETS: dict[str, tuple[str, ...]] = {
-    "eval_calibration": ("eval_calibration",),
-    "baseline_diagnosis": ("baseline_diagnosis",),
-    "gate_discovery_bootstrap": ("baseline_diagnosis", "gate_discovery"),
-    "mechanism_discovery_foundation": ("eval_calibration",),
-    "theory_rebuild_bootstrap": ("eval_calibration", "baseline_diagnosis"),
+    "t0_eval_only": ("t0_eval_calibration",),
+    "t0_t1_bootstrap": ("t0_eval_calibration", "t1_baseline_diagnosis"),
+    "t0_t2_bootstrap": ("t0_eval_calibration", "t1_baseline_diagnosis", "t2_gate_discovery"),
 }
 
 
@@ -458,7 +293,7 @@ def print_preset_table() -> None:
         print(f"{preset_name}:")
         for stage_key in stage_keys:
             stage = PIPELINE_STAGES[stage_key]
-            print(f"  - [{stage.key}] {stage.title}")
+            print(f"  - [{stage.tech_id}] {stage.title}")
             for spec in stage.experiment_specs:
                 print(f"      * {spec.script}")
 
@@ -466,37 +301,35 @@ def print_preset_table() -> None:
 def print_stage_table() -> None:
     for stage in sorted(PIPELINE_STAGES.values(), key=lambda item: item.order):
         status = "runnable" if stage.runnable_now else "blocked"
-        print(f"{stage.order}. {stage.key} [{status}]")
+        print(f"{stage.order}. {stage.tech_id} {stage.key} [{status}]")
         print(f"   title: {stage.title}")
         print(f"   objective: {stage.objective}")
+        print(f"   experiments: {', '.join(stage.experiment_ids)}")
+        print(f"   depends_on: {', '.join(stage.depends_on) if stage.depends_on else 'none'}")
         print(f"   automation: {stage.automation_mode}")
         print(f"   human_review_required: {stage.human_review_required}")
-        if stage.reference_1b_experiments:
-            print(f"   1b_reference: {', '.join(stage.reference_1b_experiments)}")
         if stage.blocked_reason:
             print(f"   blocked_reason: {stage.blocked_reason}")
 
 
 def render_stage_summary(stage_keys: tuple[str, ...]) -> str:
     lines = [
-        "# Pipeline Stage Summary",
+        "# 12B Pipeline Stage Summary",
         "",
-        "This run follows the 12B-first mechanism-rebuild order. "
-        "1B experiments are references for workflow only, not layer priors.",
+        "This run follows the rebuilt 12B-first research chain.",
+        "1B experiments are references for ordering only, not for layer priors.",
         "",
     ]
     for stage in sorted((PIPELINE_STAGES[key] for key in stage_keys), key=lambda item: item.order):
-        lines.append(f"## Stage {stage.order}: {stage.title}")
+        lines.append(f"## {stage.tech_id}: {stage.title}")
         lines.append("")
         lines.append(f"- Key: `{stage.key}`")
         lines.append(f"- Objective: {stage.objective}")
         lines.append(f"- Why now: {stage.why_now}")
+        lines.append(f"- Experiment IDs: {', '.join(stage.experiment_ids)}")
+        lines.append(f"- Depends on: {', '.join(stage.depends_on) if stage.depends_on else 'none'}")
         lines.append(f"- Automation mode: {stage.automation_mode}")
         lines.append(f"- ShieldGemma policy: {stage.shieldgemma_policy}")
-        lines.append(
-            "- 1B reference only: "
-            + (", ".join(stage.reference_1b_experiments) if stage.reference_1b_experiments else "none")
-        )
         lines.append(f"- Runnable now: {'yes' if stage.runnable_now else 'no'}")
         if stage.blocked_reason:
             lines.append(f"- Blocked reason: {stage.blocked_reason}")

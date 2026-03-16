@@ -15,7 +15,7 @@ import numpy as np
 from typing import Dict, List, Tuple, Optional
 from tqdm import tqdm
 
-from probes.model_config import get_num_hidden_layers
+from probes.model_config import get_num_hidden_layers, validate_layer_indices
 
 
 # ─── 内部工具 ───
@@ -84,6 +84,8 @@ def collect_hidden_states(
     num_layers = get_num_hidden_layers(model.config)
     if layers is None:
         layers = list(range(num_layers))
+    else:
+        layers = validate_layer_indices(model, layers, context="collect_hidden_states")
 
     states: Dict[int, List[torch.Tensor]] = {l: [] for l in layers}
 

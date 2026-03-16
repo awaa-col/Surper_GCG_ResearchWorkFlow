@@ -1,7 +1,6 @@
-# Super GCG POC
+# Super GCG Research Workflow
 
-This directory contains the pipeline entrypoint for the current `12B`-first
-mechanism-rebuild workflow.
+This directory contains the rebuilt canonical pipeline entrypoint for the `12B`-first mechanism-discovery workflow.
 
 Core policy:
 
@@ -9,7 +8,7 @@ Core policy:
 - `12B` bottom theory must be rebuilt from scratch.
 - `ShieldGemma` is the default safety judge for every pipeline stage.
 
-Workflow definitions live under [pipeline/README.md](/g:/Surper_GCG/poc/pipeline/README.md).
+Workflow definitions live under [pipeline/README.md](/g:/Surper_GCG/pipeline/README.md).
 
 ## Quick Start
 
@@ -19,55 +18,47 @@ Install the package from this directory:
 pip install -e .
 ```
 
-Run the pipeline entrypoint help:
+Show help:
 
 ```bash
 python run_pipeline.py --help
 ```
 
-List available presets:
+List presets:
 
 ```bash
 python run_pipeline.py --list-presets
 ```
 
-List the full stage catalog, including blocked stages and human-review
-checkpoints:
+List the full stage catalog:
 
 ```bash
 python run_pipeline.py --list-stages
 ```
 
-Run the frontline starting point:
+Run the first clean mainline bootstrap:
 
 ```bash
 python run_pipeline.py \
-  --preset baseline_diagnosis
+  --preset t0_t1_bootstrap
 ```
 
-Run the current theory bootstrap:
+Run the full currently-runnable chain:
 
 ```bash
 python run_pipeline.py \
-  --preset theory_rebuild_bootstrap
-```
-
-Run the next unlocked tech point after baseline:
-
-```bash
-python run_pipeline.py \
-  --preset gate_discovery_bootstrap
+  --preset t0_t2_bootstrap
 ```
 
 Dry-run without executing:
 
 ```bash
 python run_pipeline.py \
-  --preset theory_rebuild_bootstrap \
+  --preset t0_t2_bootstrap \
   --dry-run
 ```
 
-If you prefer a ready-to-run Colab notebook, open:
+If you prefer a Colab notebook, open:
 
 ```text
 Surper_GCG_Colab.ipynb
@@ -75,34 +66,28 @@ Surper_GCG_Colab.ipynb
 
 ## Available Presets
 
-- `eval_calibration`: export the review-pack artifacts for manual audit.
-- `baseline_diagnosis`: run the baseline diagnosis entrypoint.
-- `gate_discovery_bootstrap`: run the baseline diagnosis step, then the new
-  12B-first gate discovery bootstrap scan.
-- `mechanism_discovery_foundation`: current minimal safe mainline; today it
-  only runs `eval_calibration` as a support calibration step.
-- `theory_rebuild_bootstrap`: current safe automated bootstrap for `12B`
-  bottom-theory work; runs `eval_calibration` then `baseline_diagnosis`.
+- `t0_eval_only`: run only the evaluation-calibration support tech.
+- `t0_t1_bootstrap`: run `T0 -> T1`.
+- `t0_t2_bootstrap`: run `T0 -> T1 -> T2`.
 
 ## Stage Model
 
-The pipeline now tracks the intended `12B` mechanism-rebuild order explicitly:
+The pipeline now tracks the intended `12B` stage order explicitly:
 
-1. `eval_calibration`
-2. `baseline_diagnosis`
-3. `gate_discovery`
-4. `cross_layer_refinement`
-5. `detect_discovery`
-6. `late_safe_response_discovery`
-7. `candidate_quantification`
-8. `minimal_causal_closure`
-9. `robustness`
-10. `attack_acceptance`
+1. `T0 eval_calibration`
+2. `T1 baseline_diagnosis`
+3. `T2 gate_discovery`
+4. `T3 cross_layer_refinement`
+5. `T4 detect_discovery`
+6. `T5 late_safe_response_discovery`
+7. `T6 family_feature_mapping`
+8. `T7 candidate_quantification`
+9. `T8 minimal_causal_closure`
+10. `T9 robustness`
+11. `T10 attack_acceptance`
+12. `T11 trace_family_token_detail`
 
-The first three stages are currently wired through the pipeline entrypoint:
-`eval_calibration`, `baseline_diagnosis`, and `gate_discovery`. The later
-stages remain blocked until their old `1B` priors are removed from the
-underlying scripts.
+Only `T0-T2` are currently wired for direct execution. The later stages remain blocked until their old `1B` priors are removed from the underlying scripts.
 
 ## Outputs
 
@@ -118,28 +103,13 @@ Each run directory contains:
 - `pipeline_manifest.json`
 - `pipeline_stage_summary.md`
 
-The stage summary records:
-
-- stage objectives
-- why the stage exists now
-- ShieldGemma policy
-- required human-review checkpoints
-- blocked-stage notes for the selected preset
-
 ## Notes
 
-- Start with `baseline_diagnosis` for the first real `12B` mainline run.
-- Use `mechanism_discovery_foundation` only if you explicitly want the legacy
-  review-pack calibration step.
-- Use `theory_rebuild_bootstrap` when you want the current automated `12B`
-  bottom-theory bootstrap.
-- Do not run old `L17/L23`-anchored scan wrappers as if they were valid `12B`
-  discovery stages.
-- The pipeline is intentionally hybrid: it automates generation, ShieldGemma
-  audit, ranking, and artifact export, but several stages still require human
-  review before advancing.
-- If Colab VRAM is tight, reduce `--n-train`, `--n-eval`, and
-  `--max-new-tokens` through the shared pipeline flags.
+- Start with `t0_t1_bootstrap` for the first clean `12B` mainline run.
+- Use `t0_eval_only` only when you intentionally want the review-pack calibration step.
+- Use `t0_t2_bootstrap` when you want the current full runnable chain.
+- Do not run old `L17/L23`-anchored scan wrappers as if they were valid `12B` discovery stages.
+- The pipeline is intentionally hybrid: it automates generation, ShieldGemma audit, ranking, and artifact export, but several stages still require human review before advancing.
+- If Colab VRAM is tight, reduce `--n-train`, `--n-eval`, and `--max-new-tokens`.
 
-See [COLAB_PIPELINE.md](/g:/Surper_GCG/poc/COLAB_PIPELINE.md) for the Colab
-workflow.
+See [COLAB_PIPELINE.md](/g:/Surper_GCG/COLAB_PIPELINE.md) for the Colab workflow.

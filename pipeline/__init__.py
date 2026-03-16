@@ -1,10 +1,10 @@
-"""Pipeline package for the 12B-first mechanism-rebuild workflow."""
+"""Canonical 12B rebuild pipeline package."""
 
 from .catalog import (
     ExperimentSpec,
-    StageSpec,
     PIPELINE_PRESETS,
     PIPELINE_STAGES,
+    StageSpec,
     flatten_stage_specs,
     print_preset_table,
     print_stage_table,

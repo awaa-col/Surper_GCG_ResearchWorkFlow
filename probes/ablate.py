@@ -16,6 +16,7 @@ import torch
 from typing import Dict, List, Optional
 from contextlib import contextmanager
 from probes.model_structure import get_embed_tokens_module, get_transformer_layer, get_transformer_layers
+from probes.model_config import validate_layer_indices
 
 
 # ─── 单方向全层消融（Arditi 方法）─────────────────────────────────────────────
@@ -54,6 +55,8 @@ def ablation_context(model, direction: torch.Tensor, layers: Optional[List[int]]
     """
     if layers is None:
         layers = list(range(len(get_transformer_layers(model))))
+    else:
+        layers = validate_layer_indices(model, layers, context="ablation_context")
 
     hooks = []
     try:
@@ -264,6 +267,8 @@ def addition_context(model, direction: torch.Tensor, alpha: float = 10.0,
                      layers: Optional[List[int]] = None):
     if layers is None:
         layers = list(range(len(get_transformer_layers(model))))
+    else:
+        layers = validate_layer_indices(model, layers, context="addition_context")
     hooks = []
     try:
         for l in layers:
@@ -309,6 +314,8 @@ def get_attention_weights(
     attentions = out.attentions
     if layer_indices is None:
         layer_indices = list(range(len(attentions)))
+    else:
+        layer_indices = validate_layer_indices(model, layer_indices, context="get_attention_weights")
     result = {}
     for l in layer_indices:
         if l >= len(attentions):

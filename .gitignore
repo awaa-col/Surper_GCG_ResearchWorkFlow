@@ -1,24 +1,56 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
+*.pyo
+*.pyd
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
 
 # Virtual environments
-.venv
+.venv/
 
-# Local experiment outputs and caches
+# Canonical experiment outputs
 results/**
 !results/.gitkeep
+
+# Local nested old repo residue
+poc/
+
+# Local caches
 data/cache/
+codex_workspace/
 
 # Large local artifacts
 *.zip
 *.pt
+*.pdf
+*.html
+*_files/
 
-# Ad hoc local analysis outputs
-analyze_exp09_output.txt
-exp20_analysis.txt
-exp20_simple.json
+# Local notes and ad hoc outputs outside docs/
+*.txt
+qwen_safety_matches*.txt
+results_*.txt
+results_summary.md
+exp39_generations.md
+shieldgemma_audit_results.json
+
+# Root-level local scratch files
+/*.md
+!README.md
+!COLAB_PIPELINE.md
+/*.py
+!main.py
+!run_pipeline.py
+/*.ipynb
+!Surper_GCG_Colab.ipynb
+
+# Shared docs that should be versioned
+!docs/
+!docs/**
+
+# Outer local research materials kept out of the repo
+papers/
+归档/

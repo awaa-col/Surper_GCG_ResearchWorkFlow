@@ -1,20 +1,24 @@
 # Pipeline Package
 
-This folder contains the stage and preset definitions for the `12B`-first
-mechanism-rebuild workflow.
-
-Layout:
-
-- `catalog.py`: stage metadata, presets, and stage-summary rendering
-- `__init__.py`: package exports for the top-level runner
-
-Design split:
-
-- `run_pipeline.py` is the execution wrapper
-- `pipeline/` owns the workflow definition
+This folder is the canonical home of the rebuilt `12B` research pipeline.
 
 Rules:
 
-- `1B` experiments are references for workflow only
-- `12B` stage ordering and blocked-stage rules live here
-- `ShieldGemma` remains the default safety-judgement policy
+- `1B` experiments are references for search order only.
+- `12B` layer, vector, and closure claims must be rediscovered here.
+- `ShieldGemma` is the default safety-judgement policy.
+- Blocked stages may exist in the catalog, but only runnable stages may be used as the active mainline.
+
+Current runnable chain:
+
+- `T0` Eval Calibration
+- `T1` Baseline Diagnosis
+- `T2` Gate Discovery
+
+Current blocked chain:
+
+- `T3` through `T11`
+
+Entry point:
+
+- Use `run_pipeline.py`
